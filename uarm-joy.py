@@ -55,11 +55,11 @@ current_z=90
 current_rz=90
 
 # Iterate over the joystick devices.
-#print('Available devices:')
+print('Available devices:')
 
-#for fn in os.listdir('/dev/input'):
-#    if fn.startswith('js'):
-#        print('  /dev/input/%s' % (fn))
+for fn in os.listdir('/dev/input'):
+    if fn.startswith('js'):
+        print('  /dev/input/%s' % (fn))
 
 # We'll store the states here.
 axis_states = {}
@@ -197,7 +197,7 @@ while True:
                 print "%s pressed" % (button)
                 button_states[button] = value
                 if (button is 'pinkie' and value):
-                  slowrate=0.2
+                  slowrate=0.1
                 if (button is 'pinkie' and not value):
                   slowrate=1
                 if ( button is 'base3' and value):
@@ -237,14 +237,11 @@ while True:
         if type & 0x02:
             axis = axis_map[number]
             if axis:
-                fvalue = value / 32767.0
+                fvalue = value*(slowrate) / 32767.0
                 axis_states[axis] = fvalue
 		if axis=='x':
 		   pin10.write(90-fvalue*90)
-                   print pin14.read()
-                   print pin15.read()
-                   print pin16.read()
-                   print pin17.read()
+                   print "x14 : %s"%(pin14.read())
                 button = button_map[number]
 	        if axis=='y':
                  if (current_y > 90):
