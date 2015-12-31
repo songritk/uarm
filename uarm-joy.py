@@ -11,6 +11,11 @@
 #      - Slow control key 
 #      - Read analog position 
 
+import time
+import sys
+import signal
+from pixy import *
+from ctypes import *
 import os, struct, array
 from fcntl import ioctl
 from pyfirmata import Arduino, util
@@ -53,6 +58,14 @@ slowrate=1
 current_y=45
 current_z=90
 current_rz=90
+
+offset_min_y=0
+offset_min_z=0
+offset_min_rz=0
+
+offset_max_y=1
+offset_max_z=1
+offset_max_rz=1
 
 # Iterate over the joystick devices.
 print('Available devices:')
@@ -186,7 +199,7 @@ for btn in buf[:num_buttons]:
 while True:
     evbuf = jsdev.read(8)
     if evbuf:
-        time, value, type, number = struct.unpack('IhBB', evbuf)
+        times, value, type, number = struct.unpack('IhBB', evbuf)
 
 #        if type & 0x80:
 #             print "(initial)",
@@ -194,8 +207,14 @@ while True:
         if type & 0x01:
             button = button_map[number]
             if button:
-                print "%s pressed" % (button)
+#               print "%s pressed" % (button)
                 button_states[button] = value
+                if (button is 'thumb' and value):
+                  print "RZ pin14 %s"%(pin14.read())
+                  print "Y pin15 %s"%(pin15.read())
+                  print "Z pin16 %s"%(pin16.read())
+                  print "X pin17 %s"%(pin17.read())
+                  
                 if (button is 'pinkie' and value):
                   slowrate=0.1
                 if (button is 'pinkie' and not value):
@@ -206,17 +225,25 @@ while True:
 
                 if ( button is 'base4' and (not base4_state) and value):
 #		    print ("Press") 
-		    pin10.write(90)
-                    pin11.write(100)
+		    pin11.write(0)
+		    time.sleep(1.0)
+                    offset_min_z=pin16.read()
+		    pin11.write(180)
+		    time.sleep(1.0)
+                    offset_max_z=pin16.read()
+		    print "offset Z min %s"%(offset_min_z)
+		    print "offset Z max %s"%(offset_max_z)
+
+                    pin10.write(90)
+                    pin11.write(90)
                     pin12.write(45)
                     pin13.write(100)
-		    print "pin14 %s"%(pin14.read())
-                    print "pin15 %s"%(pin15.read())
-                    print "pin16 %s"%(pin16.read())
-                    print "pin17 %s"%(pin17.read())
+                    pin9.write(0)
+                    base2_state=0
+
                	base4_state=value
 		if (button is 'base' and value):
-                 print 'base %s' %(value)
+#                 print 'base %s' %(value)
                  if (base_state is 1):
                    pin6.write(1)
                    base_state=0
@@ -241,7 +268,7 @@ while True:
                 axis_states[axis] = fvalue
 		if axis=='x':
 		   pin10.write(90-fvalue*90)
-                   print "x14 : %s"%(pin14.read())
+#                  print "x14 : %s"%(pin14.read())
                 button = button_map[number]
 	        if axis=='y':
                  if (current_y > 90):
@@ -252,7 +279,7 @@ while True:
                   current_y=0
 #                 print "%s: %.3f=%.3f*%.3f" % (axis, current_y,fvalue,slowrate)
                  pin12.write(current_y)		
-		 print "y15 : %s"%(pin15.read())
+#		 print "y15 : %s"%(pin15.read())
 	
 		if axis=='rz':
 		 current_rz=current_rz-fvalue
@@ -261,8 +288,8 @@ while True:
                  if (current_rz < 0):
 	          current_rz=0
 		 pin13.write(current_rz)
-		 print "rz14 : %s"%(pin14.read())
-#              	 print "%s: %.3f" % (axis, current_rz)
+#		 print "rz14 : %s"%(pin14.read())
+#              	 print "rz13 %s: %.3f" % (axis, current_rz)
 		if axis=='z':
 		 current_z=current_z-fvalue
 		 if (current_z > 180):
@@ -270,6 +297,6 @@ while True:
 		 if (current_z <0):
 		  current_z=0
 		 pin11.write(current_z)
-                 print "z: %s %s"%(pin16.read(),pin17.read())
-		 print "%s: %.3f" %(axis,current_z)
+#                print "z16: %s "%(pin16.read())
+#		 print "z11 %s: %.3f" %(axis,current_z)
 		 clock.tick(30)
