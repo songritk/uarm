@@ -11,6 +11,7 @@
 #      - Slow control key 
 #      - Read analog position 
 
+from UArmForPython.uarm_python import Uarm
 import time
 import sys
 import signal
@@ -21,6 +22,8 @@ from fcntl import ioctl
 from pyfirmata import Arduino, util
 import pygame
 import sys, traceback
+from pykalman import KalmanFilter
+
 board = Arduino('/dev/ttyUARM')
 #board = Arduino('/dev/ttyUARM_W')
 clock = pygame.time.Clock()
@@ -38,6 +41,8 @@ pin10 = board.get_pin('d:10:s')
 pin11 = board.get_pin('d:11:s')
 pin12 = board.get_pin('d:12:s')
 pin13 = board.get_pin('d:13:s')
+
+#pin9 = board.get_pin('a:9:o')
 
 pin14 = board.get_pin('a:0:o')
 pin15 = board.get_pin('a:1:o')
@@ -196,6 +201,23 @@ for btn in buf[:num_buttons]:
 #print '%d buttons found: %s' % (num_buttons, ', '.join(button_map))
 
 # Main event loop
+
+class UARMServo:
+	def Calibration(self):
+           pin11.write(0)
+           time.sleep(5.0)
+           offset_min_z=pin16.read()
+           pin11.write(180)
+           time.sleep(5.0)
+           offset_max_z=pin16.read()
+           print "offset Z min %s"%(offset_min_z)
+           print "offset Z max %s"%(offset_max_z)
+          
+	def AnalogToDegree(rz,y,z):
+	 print 'RZ%s,Y%s,Z%s'%(pin14.read(),pin15.read(),pin16.read()) 
+	def Position(self):
+	  print "OK"
+
 while True:
     evbuf = jsdev.read(8)
     if evbuf:
@@ -207,12 +229,16 @@ while True:
         if type & 0x01:
             button = button_map[number]
             if button:
-#               print "%s pressed" % (button)
+# A button
+                print "%s pressed" % (button)
                 button_states[button] = value
+                if (button is 'trigger' and value):
+		  s=UARMServo()
+                  s.Calibration()
                 if (button is 'thumb' and value):
-                  print "RZ pin14 %s"%(pin14.read())
-                  print "Y pin15 %s"%(pin15.read())
-                  print "Z pin16 %s"%(pin16.read())
+                  print "RZ(%s) pin14 %s"%(current_rz,pin14.read())
+                  print "Y(%s) pin15 %s"%(current_y,pin15.read())
+                  print "Z(%s) pin16 %s"%(current_z,pin16.read())
                   print "X pin17 %s"%(pin17.read())
                   
                 if (button is 'pinkie' and value):
@@ -238,12 +264,11 @@ while True:
                     pin11.write(90)
                     pin12.write(45)
                     pin13.write(100)
-                    pin9.write(0)
                     base2_state=0
 
                	base4_state=value
 		if (button is 'base' and value):
-#                 print 'base %s' %(value)
+                 print 'base %s' %(value)
                  if (base_state is 1):
                    pin6.write(1)
                    base_state=0
@@ -251,7 +276,7 @@ while True:
                    pin6.write(0)
                    base_state=1
 		if (button is 'base2' and value):
-#                 print 'base2 %s' %(value)
+                 print 'base2 %s' %(value)
                  if (base2_state is 1):
                    pin9.write(1)
                    base2_state=0
@@ -268,7 +293,7 @@ while True:
                 axis_states[axis] = fvalue
 		if axis=='x':
 		   pin10.write(90-fvalue*90)
-#                  print "x14 : %s"%(pin14.read())
+                   print "x14 : %s"%(pin14.read())
                 button = button_map[number]
 	        if axis=='y':
                  if (current_y > 90):
@@ -277,9 +302,8 @@ while True:
                   current_y=current_y+(fvalue)
                  if (current_y < 0):
                   current_y=0
-#                 print "%s: %.3f=%.3f*%.3f" % (axis, current_y,fvalue,slowrate)
                  pin12.write(current_y)		
-#		 print "y15 : %s"%(pin15.read())
+		 print "y15 : %s %.3f"%(pin15.read(),current_y)
 	
 		if axis=='rz':
 		 current_rz=current_rz-fvalue
@@ -288,8 +312,7 @@ while True:
                  if (current_rz < 0):
 	          current_rz=0
 		 pin13.write(current_rz)
-#		 print "rz14 : %s"%(pin14.read())
-#              	 print "rz13 %s: %.3f" % (axis, current_rz)
+              	 print "rz13 %s: %.3f" % (axis, current_rz)
 		if axis=='z':
 		 current_z=current_z-fvalue
 		 if (current_z > 180):
@@ -297,6 +320,4 @@ while True:
 		 if (current_z <0):
 		  current_z=0
 		 pin11.write(current_z)
-#                print "z16: %s "%(pin16.read())
-#		 print "z11 %s: %.3f" %(axis,current_z)
-		 clock.tick(30)
+                 print "z16: %s %.3f"%(pin16.read(),current_z)
