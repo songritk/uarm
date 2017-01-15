@@ -31,6 +31,8 @@ K_UP2='trottle'
 K_END='rz'
 K_SLOW='tr'
 K_POS='c'
+K_PUMP='z'
+K_EXIT='tl2'
 
 board = Arduino('/dev/ttyUARM')
 #board = Arduino('/dev/ttyUSB0')
@@ -49,7 +51,8 @@ board.analog[3].enable_reporting()
 #pin13 K_UP2
 
 pin4 = board.get_pin('d:4:o')
-pin6 = board.get_pin('d:6:o')
+pumpr = board.get_pin('d:5:o')
+pump = board.get_pin('d:6:o')
 pin9 = board.get_pin('d:9:o')
 pin10 = board.get_pin('d:10:s')
 pin11 = board.get_pin('d:11:s')
@@ -253,47 +256,21 @@ while True:
                   print "UP2 RZ(%s) pin13 %s"%(current_rz,pin13.read())
                   print "BASED X pin12 %s"%(pin12.read())
                   
+		if (button is K_PUMP and value):
+		  pump.write(1)
+		  pumpr.write(0)
+		  print "Suction"
+		if (button is K_PUMP and not value):
+		  pump.write(0)
+		  pumpr.write(1)
+		  print "Release"
                 if (button is K_SLOW and value):
                   slowrate=0.1
                 if (button is K_SLOW and not value):
                   slowrate=1
-                if ( button is 'tl2' and value):
+                if ( button is K_EXIT and value):
                   board.exit()
 		  sys.exit(0)
-
-#                if ( button is 'base4' and (not base4_state) and value):
-#		    pin11.write(0)
-#		    time.sleep(1.0)
-#                    offset_min_z=pin16.read()
-#		    pin11.write(180)
-#		    time.sleep(1.0)
-#                    offset_max_z=pin16.read()
-#		    print "offset Z min %s"%(offset_min_z)
-#		    print "offset Z max %s"%(offset_max_z)
-#
-#                    pin10.write(90)
-#                    pin11.write(90)
-#                    pin12.write(45)
-#                    pin13.write(100)
-#                    base2_state=0
-
-               	base4_state=value
-		if (button is 'base' and value):
-                 print 'base %s' %(value)
-                 if (base_state is 1):
-                   pin6.write(1)
-                   base_state=0
-                 else:
-                   pin6.write(0)
-                   base_state=1
-		if (button is 'base2' and value):
-                 print 'base2 %s' %(value)
-                 if (base2_state is 1):
-                   pin9.write(1)
-                   base2_state=0
-                 else:
-                   pin9.write(0)
-                   base2_state=1
 	 else:
 		print "%s released" % (button)
         if type & 0x02:
